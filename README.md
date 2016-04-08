@@ -1,7 +1,8 @@
-** This is a developmental repository for M2Scorer **
-** For an official version, visit http://www.comp.nus.edu.sg/~nlp/conll14st.html **
-** Or https://github.com/nusnlp/m2scorer/releases **
-
+**************************************************************************************************
+**THIS IS A DEVELOPMENTAL REPOSITORY FOR M2Scorer**   
+**FOR AN OFFICIAL VERSION (VERSION 3.2), visit http://www.comp.nus.edu.sg/~nlp/conll14st.html**  
+**OR CHECK OUT THE RELEASES: https://github.com/nusnlp/m2scorer/releases**  
+****************************************************************************************************
 
 ## M^2Scorer 
 
@@ -21,22 +22,21 @@ Any questions regarding the NUS M^2 scorer should be directed to
 Hwee Tou Ng (nght@comp.nus.edu.sg).
 
 
-### Contents
-0. Quickstart
-1. Pre-requisites
-2. Using the scorer
-  2.1 System output format
-  2.2 Scorer's gold standard format
-3. Converting the CoNLL-2014 data format
-4. Revisions
-   4.1 Alternative edits
-   4.2 F-beta measure
-   4.3 Handling of insertion edits
-   4.4 Bug fix for scoring against multiple sets of gold edits, and
-       dealing with sequences of insertion/deletion edits
+### Contents  
+1. Quickstart
+2. Pre-requisites 
+3. Using the scorer   
+  3.1 System output format     
+  3.2 Scorer's gold standard format   
+4. Converting the CoNLL-2014 data format
+5. Revisions  
+   5.1 Alternative edits     
+   5.2 F-beta measure   
+   5.3 Handling of insertion edits   
+   5.4 Bug fix for scoring against multiple sets of gold edits, and dealing with sequences of insertion/deletion edits
 
 
-### 0. Quickstart
+### Quickstart
 
 ```
 ./m2scorer [-v] SYSTEM SOURCE_GOLD 
@@ -45,14 +45,14 @@ SYSTEM = the system output in sentence-per-line plain text.
 SOURCE_GOLD = the source sentences with gold edits.
 
 
-### 1. Pre-requisites
+### Pre-requisites
 The following dependencies have to be installed to use the M^2 scorer.
 
 * Python (>= 2.6.4, < 3.0, older versions might work but are not tested)
 * nltk (http://www.nltk.org, needed for sentence splitting) 
 
 
-### 2. Using the scorer
+### Using the scorer
 ```
 Usage: m2scorer [OPTIONS] SYSTEM SOURCE_GOLD
 ```
@@ -80,19 +80,19 @@ Format:
  ...
 ```
 
-**Examples of tokenization:**
+**Examples of tokenization:**  
  Original  : He said, "We shouldn't go to the place. It'll kill one of us."
  Tokenized : He said , " We should n't go to the place . It 'll kill one of us . "
 
 Note: Tokenization in the CoNLL-2014 shared task uses NLTK word tokenizer.
 
-**Sample output:**
+**Sample output:**   
 ===> system <===
 A cat sat on the mat .
 The Dog .
 
 
-#### 2.2 Scorer's gold standard format
+#### Scorer's gold standard format
 SOURCE_GOLD = source sentences (i.e. input to the error correction
 system) and the gold annotation in TOKEN offsets (starting from zero). 
 
@@ -105,7 +105,7 @@ S <tokenized system output for sentence 2>
 A <token start offset> <token end offset>|||<error type>|||<correction1>||<correction2||..||correctionN|||<required>|||<comment>|||<annotator id>
 
 
-** Notes: **
+**Notes:**   
  * Each source sentence should appear on a single line starting with "S "
  * Each source sentence is followed by zero or more annotations.
  * Each annotation is on a separate line starting with "A ".
@@ -121,7 +121,7 @@ A <token start offset> <token end offset>|||<error type>|||<correction1>||<corre
    * The final score for the sentence will use the set of edits by an annotation set maximizing the score.
 
 
-** Example:**
+**Example:**   
 ===> source_gold <===
 S The cat sat at mat .
 A 3 4|||Prep|||on|||REQUIRED|||-NONE-|||0
@@ -136,7 +136,6 @@ A 2 3|||SVA|||are|||REQUIRED|||-NONE-|||0
 A 3 4|||ArtOrDet|||-NONE-|||REQUIRED|||-NONE-|||0
 A 5 6|||NN|||predators|||REQUIRED|||-NONE-|||0
 A 1 2|||NN|||otter|||REQUIRED|||-NONE-|||1
-
 
 
 ===> system <===
@@ -167,7 +166,7 @@ recall. In the above example, the beta value for the F-measure is 0.5
 (the default value).
 
 
-### 3. Converting the CoNLL-2014 data format
+###Converting the CoNLL-2014 data format
 The data format used in the M^2 scorer differs from the format used in
 the CoNLL-2014 shared task (http://www.comp.nus.edu.sg/~nlp/conll14st.html)
 in two aspects:
@@ -178,52 +177,3 @@ To convert source files and gold edits from the CoNLL-2014 format into
 the M^2 format, run the preprocessing script bundled with the CoNLL-2014
 training data.
 
-
-### 4. Revisions
-
-#### 4.1 Alternative edits
-
-In this release, there is a major modification which enables scoring
-with multiple sets of gold edits. For every sentence, the system
-output will be scored against every available set of gold edits for
-the sentence, and the set of gold edits that maximizes the F score of
-the sentence is chosen.
-
-This modification was carried out by Christian Hadiwinoto, 2013.
-
-
-#### 4.2 F-beta measure
-
-While the previous release always uses the F1 measure, i.e. beta =
-1.0, this release supports any value for beta. The default value for
-beta for this version is 0.5.
-
-This modification was carried out by Raymond Hendy Susanto, 2013.
-
-
-#### 4.3 Handling of insertion edits
-
-Multiple insertion edits (starting and ending at the same offset) that
-match a gold edit were counted repeatedly, leading to erroneous and
-inflated scores. A fix has been made to handle this. The order of
-insertion edits, which was not handled in the previous version, is now
-enforced.
-
-This modification was jointly carried out by Raymond Hendy Susanto and
-Christian Hadiwinoto, 2014.
-
-
-#### 4.4 Bug fix for scoring against multiple sets of gold edits, and
-dealing with sequences of insertion/deletion edits
-
-Fixed a bug in the M2 scorer arising from scoring against gold edits
-from multiple annotators. Specifically, the bug sometimes caused
-incorrect scores to be reported when scoring against the gold edits of
-subsequent annotators (other than the first annotator).
-
-Fixed a bug in the M2 scorer that caused erroneous scores to be
-reported when dealing with insertion edits followed by deletion edits
-(or vice versa).
-
-The above modifications were carried out by Christian Hadiwinoto,
-2014.
