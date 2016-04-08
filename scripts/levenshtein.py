@@ -99,17 +99,47 @@ def f1_suffstats(candidate, source, gold_edits, max_unchanged_words=2, ignore_wh
         print "-------------------------------------------"
     return (stat_correct, stat_proposed, stat_gold)
 
+def make_graph(E,very_verbose):
+
+    if very_verbose:
+        print " $$$$$$ In make_graph E = ", E
+
+    G = dict()
+
+    for e in E:
+        try:
+            G[e[0]][0][e[1]] = True
+        except KeyError:
+            G[e[0]] = ({},{})
+            G[e[0]][0][e[1]] = True
+        
+        try:
+            G[e[1]][1][e[0]] = True
+        except KeyError:
+            G[e[1]] = ({},{})
+            G[e[1]][1][e[0]] = True
+
+    if very_verbose:
+        print " $$$$$ G = ", G
+
+    return G
+
 def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=2, beta=0.5, ignore_whitespace_casing= False, verbose=False, very_verbose=False):
     assert len(candidates) == len(sources) == len(gold_edits)
+
     stat_correct = 0.0
     stat_proposed = 0.0
     stat_gold = 0.0
     i = 0
+
+    show_time = False
+
     for candidate, source, golds_set in zip(candidates, sources, gold_edits):
         i = i + 1
         # Candidate system edit extraction
         candidate_tok = candidate.split()
         source_tok = source.split()
+
         #lmatrix, backpointers = levenshtein_matrix(source_tok, candidate_tok)
         lmatrix1, backpointers1 = levenshtein_matrix(source_tok, candidate_tok, 1, 1, 1)
         lmatrix2, backpointers2 = levenshtein_matrix(source_tok, candidate_tok, 1, 1, 2)
@@ -118,15 +148,39 @@ def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=
         V1, E1, dist1, edits1 = edit_graph(lmatrix1, backpointers1)
         V2, E2, dist2, edits2 = edit_graph(lmatrix2, backpointers2)
 
+        if show_time:
+            end = time.time()
+            h, rem = divmod(end-start, 3600)
+            m, sec = divmod(rem, 60)
+            print "############## Time taken to edit graph = %dhours %dmins %sseconds " %(h,m,sec)
+            start = time.time()
+
+        # V, E, dist, edits = merge_graph(V1, V1_dict_in, V1_dict_out, V2, V2_dict_in, V2_dict_out, E1, E2, dist1, dist2, edits1, edits2,i)
         V, E, dist, edits = merge_graph(V1, V2, E1, E2, dist1, dist2, edits1, edits2)
+
+        if show_time:
+            end = time.time()
+            h, rem = divmod(end-start, 3600)
+            m, sec = divmod(rem, 60)
+            print "############## Time taken to merge_graph = %dhours %dmins %sseconds " %(h,m,sec)
+
         if very_verbose:
             print "edit matrix 1:", lmatrix1
             print "edit matrix 2:", lmatrix2
             print "backpointers 1:", backpointers1
             print "backpointers 2:", backpointers2
             print "edits (w/o transitive arcs):", edits
-        V, E, dist, edits = transitive_arcs(V, E, dist, edits, max_unchanged_words, very_verbose)
-        
+
+        G = make_graph(E,very_verbose)
+
+        V, E, G, dist, edits = transitive_arcs(V, E, G, dist, edits, golds_set, i, max_unchanged_words, very_verbose)
+
+        if show_time:
+            end = time.time()
+            h, rem = divmod(end-start, 3600)
+            m, sec = divmod(rem, 60)
+            print "############## Time taken to construct transitive_arcs = %dhours %dmins %sseconds " %(h,m,sec)
+
         # Find measures maximizing current cumulative F1; local: curent annotator only
         sqbeta = beta * beta
         chosen_ann = -1
@@ -138,9 +192,26 @@ def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=
         max_stat_correct = -1.0
         min_stat_proposed = float("inf")
         min_stat_gold = float("inf")
+
         for annotator, gold in golds_set.iteritems():
             localdist = set_weights(E, dist, edits, gold, verbose, very_verbose)
-            editSeq = best_edit_seq_bf(V, E, localdist, edits, very_verbose)
+
+            if show_time:
+                end = time.time()
+                h, rem = divmod(end-start, 3600)
+                m, sec = divmod(rem, 60)
+                print "############## Time taken to set_weights = %dhours %dmins %sseconds " %(h,m,sec)
+                start = time.time()
+
+            # editSeq = best_edit_seq_bf(V, E, localdist, edits, very_verbose)
+            editSeq = single_source_shortest_path(V, G, localdist, edits, gold, max_unchanged_words, source_tok, very_verbose)
+
+            if show_time:
+                end = time.time()
+                h, rem = divmod(end-start, 3600)
+                m, sec = divmod(rem, 60)
+                print "############## Time taken to construct best_edit_seq_bf = %dhours %dmins %sseconds " %(h,m,sec)
+
             if verbose:
                 print ">> Annotator:", annotator
             if very_verbose:
@@ -214,6 +285,7 @@ def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=
         print "P =", p
         print "R =", r
         print "F_%.1f =" % beta, f1
+
     return (p, r, f1)
     
 
@@ -434,9 +506,364 @@ def get_distance(dist, v1, v2):
     except KeyError:
         return float('inf')
 
+def top_sort(V, G, very_verbose=False):
+
+    V_dict = dict()
+    V_sorted = []
+    
+    V_copy = deepcopy(V)
+    
+    for v in V:
+        V_dict[v] = True
+
+    if very_verbose:
+        print "V = ", V
+
+    while (len(V_copy)>0):
+        sort(V_copy, V_dict, V_copy[0], G, V_sorted, very_verbose)
+
+    return V_sorted
+
+def sort(V_copy, V_dict, v, G, V_sorted, very_verbose=False):
+
+    V_copy.remove(v)
+    V_dict.pop(v)
+    for u in G[v][0].keys():
+        if u in V_dict:
+            sort(V_copy, V_dict, u, G, V_sorted, very_verbose)
+    V_sorted.insert(0,v)
+
+def initialize_single_source(V_sorted, very_verbose=False):
+
+    d = {}
+    p = {}
+
+    for v in V_sorted:
+        d[v] = float('inf')
+        p[v] = None
+    d[(0,0)] = 0
+
+    return d, p
+
+def relax(u, v, w, d, p):
+
+    if d[v] >= d[u] + w[(u,v)]:
+        d[v] = d[u] + w[(u,v)]
+        p[v] = u
+    
+    return d,p
+
+def check_match_gold(e, gold):
+
+    check = False
+
+    e_temp = (e[1],e[2],e[3],e[4])
+
+    for g_edit in gold:
+        if matchEdit(e_temp, g_edit) :
+            check = True
+
+    return check
+
+def check_movable(e, gold, editSeq, nextPtr, idx, i, max_unchanged_words):
+
+    check = True
+
+    if i+1 > len(idx)-1:
+        check = False
+    elif i+1 == len(idx)-1:
+        if idx[i+1] == idx[i]+1:
+            check = False
+        else:
+            temp = editSeq[nextPtr+1]
+            if check_match_gold(temp,gold):
+                check = False
+            elif temp[-1] + temp[1]- editSeq[nextPtr][2] > max_unchanged_words:
+                check = False
+    elif i+1 < len(idx)-1:
+        if idx[i+1] != idx[i]+1:
+            temp = editSeq[nextPtr+1]
+            if check_match_gold(temp,gold):
+                check = False
+            elif temp[-1] + temp[1]- editSeq[nextPtr][2] > max_unchanged_words:
+                check = False
+        else:
+            if editSeq[idx[i+1]][0] != 'del':
+                check = False
+            else:
+                e_temp = (e[0],editSeq[nextPtr][2],editSeq[nextPtr][2],e[3],e[4],e[5])
+                check = check_movable(e_temp,gold,editSeq,idx[i+1],idx,i+1,max_unchanged_words)
+    return check
+
+def merge_edits_del(e1, e2, target, joiner = ' '):
+    return ('sub', e1[1], e2[2], e1[3] + joiner + e2[3], target, e1[5] + e2[5])
+
+def move_ins(editSeq, gold, max_unchanged_words, very_verbose = False):
+
+    idx = []
+
+    for ed in editSeq:
+        if check_match_gold(ed, gold) and ed[0] == 'del':
+            idx.append(editSeq.index(ed))
+
+    if len(idx) > 0:
+        i = 0
+        thisPtr = 0
+
+        if idx[-1] == len(editSeq)-1:
+            del idx[-1]
+
+        while(i < len(idx)):
+            nextPtr = idx[i]
+            k = thisPtr
+            # for k in range(thisPtr,nextPtr):
+            while thisPtr <= k < nextPtr:
+                e = editSeq[k]
+                unchanged_words = editSeq[nextPtr+1]
+                if not check_match_gold(e, gold) and e[0] == 'ins' and e[2] == editSeq[nextPtr][1] and check_movable(e,gold,editSeq,nextPtr,idx,i,max_unchanged_words):
+                    e_temp = (e[0],editSeq[nextPtr][2],editSeq[nextPtr][2],e[3],e[4],e[5])
+                    editSeq.insert(nextPtr+1,e_temp)
+                    del editSeq[k]
+                    nextPtr -= 1
+                else:
+                    k += 1
+            thisPtr = nextPtr
+            i += 1
+        
+    return editSeq
+
+def merge_non_gold(editSeq, gold, max_unchanged_words, source_tok, very_verbose=False):
+
+    editSeq = move_ins(editSeq,gold,max_unchanged_words,very_verbose)
+
+    thisPtr = len(editSeq)-1
+    nextPtr = thisPtr-1
+
+    if very_verbose:
+        print "$$$$$ editSeq before shrink = ", editSeq
+
+    temp_editSeq = []
+
+    for ed in editSeq:
+        shrunkEdit = shrinkEdit(ed[1:5])
+        unchanged_words_sub = ed[5] - (len(ed[4].split()) - len(shrunkEdit[3].split()))
+        if len(shrunkEdit[2].split()) == 0 and ed[0] == 'sub':
+            edit_type = 'ins'
+        else:
+            edit_type = ed[0]
+        temp_edit = ((edit_type,) + shrunkEdit + (unchanged_words_sub,))
+        temp_editSeq.append(temp_edit)
+
+    editSeq = temp_editSeq
+
+    if very_verbose:
+        print "$$$$$ editSeq after shrink = ", editSeq
+
+    # while (thisPtr < len(editSeq)-1):
+    while(thisPtr > 0):
+        unchanged_words_add = 0
+
+        if very_verbose:
+            print "thisPtr = ", thisPtr
+
+        if not check_match_gold(editSeq[thisPtr], gold):
+            joiner = ' '
+            if not check_match_gold(editSeq[nextPtr], gold):
+                
+                # if editSeq[thisPtr][2] < editSeq[nextPtr][1]:
+                if editSeq[thisPtr][1] > editSeq[nextPtr][2]:
+                    # unchanged_words_add = editSeq[nextPtr][1] - editSeq[thisPtr][2]
+                    unchanged_words_add = editSeq[thisPtr][1] - editSeq[nextPtr][2]
+                    # joiner = ' ' + ' '.join(source_tok[editSeq[thisPtr][2]:editSeq[nextPtr][1]]) + ' '
+                    joiner = ' ' + ' '.join(source_tok[editSeq[nextPtr][2]:editSeq[thisPtr][1]]) + ' '
+
+                unchanged_words = editSeq[nextPtr][5] + editSeq[thisPtr][5] + unchanged_words_add
+
+                if very_verbose:        
+                    print "editSeq[thisPtr] : ", editSeq[thisPtr]
+                    print "editSeq[nextPtr] : ", editSeq[nextPtr]
+                    print "unchanged_words_sub = ", unchanged_words_add                    
+                    print "unchanged_words = ", unchanged_words
+
+                if unchanged_words <= max_unchanged_words:
+                    if editSeq[thisPtr][0] == 'del' and editSeq[thisPtr][0] == 'del' and unchanged_words_add > 0:
+                        # target = ' '.join(source_tok[editSeq[thisPtr][2]:editSeq[nextPtr][1]])
+                        target = ' '.join(source_tok[editSeq[nextPtr][2]:editSeq[thisPtr][1]])
+                        # new_edit_t = merge_edits_del(editSeq[thisPtr], editSeq[nextPtr], target, joiner)
+                        new_edit_t = merge_edits_del(editSeq[nextPtr], editSeq[thisPtr], target, joiner)
+                    else:
+                        # new_edit_t = merge_edits(editSeq[thisPtr], editSeq[nextPtr], joiner)
+                        new_edit_t = merge_edits(editSeq[nextPtr], editSeq[thisPtr], joiner)
+
+                    new_edit = (new_edit_t[0], new_edit_t[1], new_edit_t[2], new_edit_t[3], new_edit_t[4], unchanged_words) 
+                
+                    if very_verbose:
+                        print "new_edit_t = ", new_edit_t
+                        print "new_edit = ", new_edit
+
+                    # del editSeq[thisPtr:nextPtr+1]
+                    del editSeq[nextPtr:thisPtr+1]
+                    # editSeq.insert(thisPtr,new_edit)
+                    editSeq.insert(nextPtr,new_edit)
+
+                    if very_verbose:                
+                        print "editSeq = ", editSeq
+
+                    thisPtr -= 1
+                    nextPtr = thisPtr - 1
+
+                else:
+                    # thisPtr += 1
+                    thisPtr -= 1
+                    # nextPtr = thisPtr + 1
+                    nextPtr = thisPtr - 1
+            else:
+                # if  nextPtr+1 < len(editSeq):
+                if nextPtr-1 >= 0:
+
+                    if very_verbose:
+                        print " #### thisPtr ####" , editSeq[thisPtr]
+                        print " #### nextPtr ####" , editSeq[nextPtr]
+                        print " #### nextPtr-1 ####" , editSeq[nextPtr-1]
+
+                    # if editSeq[nextPtr][0] == 'del' and not check_match_gold(editSeq[nextPtr+1],gold):
+                    if editSeq[nextPtr][0] == 'del' and not check_match_gold(editSeq[nextPtr-1],gold):
+
+                        # if editSeq[thisPtr][0] == 'ins' and editSeq[thisPtr][2] == editSeq[nextPtr][1]:
+                        if editSeq[thisPtr][0] == 'ins' and editSeq[thisPtr][1] == editSeq[nextPtr][2]:
+
+                            if very_verbose:
+                                print " #### thisPtr is ins #### "
+
+                            # edit_ins_aft = (editSeq[thisPtr][0],editSeq[nextPtr][2],editSeq[nextPtr][2],editSeq[thisPtr][3],editSeq[thisPtr][4],editSeq[thisPtr][5])
+                            edit_ins_aft = (editSeq[thisPtr][0],editSeq[nextPtr][1],editSeq[nextPtr][1],editSeq[thisPtr][3],editSeq[thisPtr][4],editSeq[thisPtr][5])
+
+
+                            # if edit_ins_aft[2] < editSeq[nextPtr+1][1]:
+                            if edit_ins_aft[1] > editSeq[nextPtr-1][2]:
+                                # unchanged_words_add = editSeq[nextPtr+1][1] - edit_ins_aft[2]
+                                unchanged_words_add = edit_ins_aft[1] - editSeq[nextPtr-1][2]
+                                # joiner = ' ' + ' '.join(source_tok[edit_ins_aft[2]:editSeq[nextPtr+1][1]]) + ' '
+                                joiner = ' ' + ' '.join(source_tok[editSeq[nextPtr-1][2]:edit_ins_aft[1]]) + ' '
+
+                            # unchanged_words = editSeq[nextPtr+1][5] + edit_ins_aft[5] + unchanged_words_add
+                            unchanged_words = editSeq[nextPtr-1][5] + edit_ins_aft[5] + unchanged_words_add
+
+                            if very_verbose:
+                                print " #### unchanged_words_add = %d, unchanged_words = %d #### " %(unchanged_words_add,unchanged_words) 
+
+                            if unchanged_words <= max_unchanged_words:
+                            
+                                # new_edit_t = merge_edits(edit_ins_aft, editSeq[nextPtr+1], joiner)
+                                new_edit_t = merge_edits(editSeq[nextPtr-1], edit_ins_aft, joiner)
+                                new_edit = (new_edit_t[0], new_edit_t[1], new_edit_t[2], new_edit_t[3], new_edit_t[4], unchanged_words) 
+
+                                if very_verbose:
+                                    print " #### new_edit is : #### ", new_edit
+                            
+                                del editSeq[thisPtr]
+                                editSeq.insert(nextPtr,new_edit)
+                                # del editSeq[nextPtr+1]
+                                del editSeq[nextPtr-1]
+
+                        # elif editSeq[nextPtr+1][0] == 'ins' and editSeq[nextPtr+1][1] == editSeq[nextPtr][2]:
+                        elif editSeq[nextPtr-1][0] == 'ins' and editSeq[nextPtr-1][2] == editSeq[nextPtr][1]:
+
+                            if very_verbose:
+                                # print " #### nextPtr+1 is ins #### "
+                                print " #### nextPtr-1 is ins #### "
+
+                            # edit_ins_aft = (editSeq[nextPtr+1][0],editSeq[nextPtr][1],editSeq[nextPtr][1],editSeq[nextPtr+1][3],editSeq[nextPtr+1][4],editSeq[nextPtr+1][5])
+                            edit_ins_aft = (editSeq[nextPtr-1][0],editSeq[nextPtr][2],editSeq[nextPtr][2],editSeq[nextPtr-1][3],editSeq[nextPtr-1][4],editSeq[nextPtr-1][5])
+
+                            # if editSeq[thisPtr][2] < edit_ins_aft[1]:
+                            if editSeq[thisPtr][1] > edit_ins_aft[2]:
+                                # unchanged_words_add = edit_ins_aft[1] - editSeq[thisPtr][2]
+                                unchanged_words_add = editSeq[thisPtr][1] - edit_ins_aft[2]
+                                # joiner = ' ' + ' '.join(source_tok[editSeq[thisPtr][2]:edit_ins_aft[1]]) + ' '
+                                joiner = ' ' + ' '.join(source_tok[edit_ins_aft[2] : editSeq[thisPtr][1]]) + ' '
+
+                            unchanged_words = editSeq[thisPtr][5] + edit_ins_aft[5] + unchanged_words_add
+
+                            if very_verbose:
+                                print " #### unchanged_words_add = %d, unchanged_words = %d #### " %(unchanged_words_add,unchanged_words) 
+
+                            if unchanged_words <= max_unchanged_words:
+                                # new_edit_t = merge_edits(editSeq[thisPtr], edit_ins_aft, joiner)
+                                new_edit_t = merge_edits(edit_ins_aft, editSeq[thisPtr], joiner)
+                                new_edit = (new_edit_t[0], new_edit_t[1], new_edit_t[2], new_edit_t[3], new_edit_t[4], unchanged_words) 
+
+                                if very_verbose:
+                                    print " #### new_edit is : #### ", new_edit
+
+                                # del editSeq[nextPtr+1]
+                                del editSeq[nextPtr-1]
+                                editSeq.insert(nextPtr,new_edit)
+                                del editSeq[thisPtr]
+
+                thisPtr = nextPtr - 1
+                nextPtr = thisPtr - 1        
+        else:
+            thisPtr -= 1
+            nextPtr = thisPtr - 1
+
+    if very_verbose:
+        print "editSeq = ", editSeq
+
+    final_editSeq = []
+
+    for i in range(len(editSeq)):
+        final_editSeq.insert(0,(editSeq[i][1], editSeq[i][2], editSeq[i][3], editSeq[i][4]))
+
+    if very_verbose:
+        print "final_editSeq = ", final_editSeq
+
+    return final_editSeq
+
+def single_source_shortest_path(V, G, dist, edits, gold, max_unchanged_words, source_tok, very_verbose=False):
+
+    V_sorted = top_sort(V, G, very_verbose)
+
+    if very_verbose:
+        print "V_sorted = ", V_sorted
+        print "dist = ", dist
+
+    d, p = initialize_single_source(V_sorted, very_verbose)
+
+    editSeq = []
+
+    for u in V_sorted:
+        if very_verbose:
+            print "$$$$ u : ", u
+        for v in G[u][0].keys():
+            if very_verbose:
+                print "#### v : ", v    
+            d,p = relax(u,v,dist,d,p)
+            if very_verbose:
+                print "&&&& d : ", d
+                print "@@@@ p : ", p
+
+    # back trace    
+    v = sorted(V)[-1]
+
+    while True:
+        try:
+            w = p[v]
+            edit = edits[(w,v)]
+        except KeyError:
+            break
+        # if w != None:
+            # edit = edits[(w,v)]
+        if edit[0] != 'noop':
+            editSeq.insert(0,edit)
+        v = w
+
+    editSeq = merge_non_gold(editSeq, gold, max_unchanged_words, source_tok, very_verbose)
+    
+    return editSeq
 
 # find maximally matching edit squence through the graph using bellman-ford
-def best_edit_seq_bf(V, E, dist, edits, verby_verbose=False):
+def best_edit_seq_bf(V, E, dist, edits, very_verbose=False):
     thisdist = {}
     path = {}
     for v in V:
@@ -599,20 +1026,20 @@ def set_weights(E, dist, edits, gold_edits, verbose=False, very_verbose=False):
                             g_rptr = i - 1
                         break
                         
-                if not hasGoldMatch and thisEdit[0] != 'noop':
+                if not hasGoldMatch and thisEdit[0] == 'noop':
                     retdist[edge] += EPSILON
                 if hasGoldMatch:
                     if cur == lptr:
                         lptr += 1
                         while lptr < len(M[k]) and M[k][lptr][0] != M[k][cur][1]:
-                            if edits[M[k][lptr]] != 'noop':
+                            if edits[M[k][lptr]] == 'noop':
                                 retdist[M[k][lptr]] += EPSILON
                             lptr += 1
                         cur = lptr
                     else:
                         rptr -= 1
                         while rptr >= 0 and M[k][rptr][1] != M[k][cur][0]:
-                            if edits[M[k][rptr]] != 'noop':
+                            if edits[M[k][rptr]] == 'noop':
                                 retdist[M[k][rptr]] += EPSILON
                             rptr -= 1
                         cur = rptr
@@ -641,45 +1068,80 @@ def set_weights(E, dist, edits, gold_edits, verbose=False, very_verbose=False):
                             print "matched gold edit :", gold
                             print "set weight to :", retdist[edge]
                         break
-                if not hasGoldMatch and thisEdit[0] != 'noop':
+                if not hasGoldMatch and thisEdit[0] == 'noop':
                     retdist[edge] += EPSILON
     return retdist
 
 # add transitive arcs
-def transitive_arcs(V, E, dist, edits, max_unchanged_words=2, very_verbose=False):
+
+def check_in_gold_sub(e, golds_set):
+
+    check = False
+
+    for annotator, gold in golds_set.iteritems():
+        for g_edit in gold:
+            if g_edit[0] <= e[1] and e[1] <= e[2] and e[2] <= g_edit[1]:
+                check = True
+
+    return check
+
+def get_gold_range(golds_set, very_verbose = False):
+    
+    gold_range = []
+
+    for annotator, gold in golds_set.iteritems():
+        for g_edit in gold:
+            gold_range.append((g_edit[0],g_edit[1]))
+
+    return gold_range
+
+def check_in_gold_range(e,gold_range):
+
+    for r in gold_range:
+        if r[0] <= e[1] <= r[1]:
+            return True
+
+    return False
+
+def transitive_arcs(V, E, G, dist, edits, golds_set, line_num, max_unchanged_words=2, very_verbose=False):
     if very_verbose:
         print "-- Add transitive arcs --"
+
+    gold_range = get_gold_range(golds_set, very_verbose)
+
     for k in range(len(V)):
         vk = V[k]
-        if very_verbose:
-            print "v _k :", vk
 
-        for i in range(len(V)):
-            vi = V[i]
-            if very_verbose:
-                print "v _i :", vi
-            try:
-                eik = edits[(vi, vk)]
-            except KeyError:
-                continue
-            for j in range(len(V)):
-                vj = V[j]
-                if very_verbose:
-                    print "v _j :", vj
+        if check_in_gold_range(vk,gold_range):
+
+            for vi in G[vk][1].keys():
+
                 try:
-                    ekj = edits[(vk, vj)]
+                    eik = edits[(vi, vk)]
                 except KeyError:
                     continue
-                dik = get_distance(dist, vi, vk)
-                dkj = get_distance(dist, vk, vj)
-                if dik + dkj < get_distance(dist, vi, vj):
-                    eij = merge_edits(eik, ekj)
-                    if eij[-1] <= max_unchanged_words:
-                        if very_verbose:
-                            print " add new arcs v_i -> v_j:", eij 
-                        E.append((vi, vj))
-                        dist[(vi, vj)] = dik + dkj
-                        edits[(vi, vj)] = eij
+
+                for vj in G[vk][0].keys():
+
+                    try:
+                        ekj = edits[(vk, vj)]
+                    except KeyError:
+                        continue
+
+                    dik = get_distance(dist, vi, vk)
+                    dkj = get_distance(dist, vk, vj)
+                    distance = dik + dkj
+
+                    if dik + dkj < get_distance(dist, vi, vj):
+                        eij = merge_edits(eik, ekj)
+                        if check_in_gold_sub(eij, golds_set):
+
+                            if eij[-1] <= max_unchanged_words and not (eik[0] == 'noop' and ekj[0] == 'noop' and distance > 1):
+                                E.append((vi, vj))
+                                dist[(vi, vj)] = dik + dkj
+                                edits[(vi, vj)] = eij
+                                G[vi][0][vj] = True
+                                G[vj][1][vi] = True
     # remove noop transitive arcs 
     if very_verbose:
         print "-- Remove transitive noop arcs --"
@@ -691,8 +1153,7 @@ def transitive_arcs(V, E, dist, edits, max_unchanged_words=2, very_verbose=False
             E.remove(edge)
             dist[edge] = float('inf')
             del edits[edge]
-    return(V, E, dist, edits)
-
+    return(V, E, G, dist, edits)
 
 # combine two edits into one
 # edit = (type, start, end, orig, correction, #unchanged_words)
@@ -746,12 +1207,21 @@ def edit_graph(levi_matrix, backpointers):
     # breath-first search through the matrix
     v_start = (len(levi_matrix)-1, len(levi_matrix[0])-1)
     queue = [v_start]
+
+    V_dict = dict()
+    Q_dict = dict()
+
     while len(queue) > 0:
         v = queue[0]
+        Q_dict[v] = False
         queue = queue[1:]
-        if v in V:
+    
+        # if v in V:
+        if v in V_dict:
             continue
-        V.append(v)
+        V.append(v) 
+        V_dict[v] = True
+
         try:
             for vnext_edits in backpointers[v]:
                 vnext = vnext_edits[0]
@@ -759,8 +1229,9 @@ def edit_graph(levi_matrix, backpointers):
                 E.append((vnext, v))
                 dist[(vnext, v)] = 1
                 edits[(vnext, v)] = edit_next
-                if not vnext in queue:
+                if v not in Q_dict or Q_dict[v] == False:
                     queue.append(vnext)
+                    Q_dict[vnext] = True
         except KeyError:
             pass
     return (V, E, dist, edits)
@@ -768,23 +1239,41 @@ def edit_graph(levi_matrix, backpointers):
 # merge two lattices, vertices, edges, and distance and edit table
 def merge_graph(V1, V2, E1, E2, dist1, dist2, edits1, edits2):
     # vertices
-    V = deepcopy(V1)
-    for v in V2:
-        if v not in V:
-            V.append(v)
+
+    # V = deepcopy(V1)
+
+    V1set = set(V1)
+    V2set = set(V2)
+    Vunion = set.union(V1set, V2set)
+    V = list(Vunion)
+
+    # for v in V2:
+    #     if v not in V:
+    #         V.append(v)
+
     V = sorted(V)
 
     # edges
-    E = E1
-    for e in E2:
-        if e not in V:
-            E.append(e)
+    # E = deepcopy(E1)
+
+    E1set = set(E1)
+    E2set = set(E2)
+    Eunion = set.union(E1set, E2set)
+    E = list(Eunion)
+    
+    # E = E1
+    # for e in E2:
+    #     if e not in E:
+    #     # if e not in V:
+    #         E.append(e)
+    
     E = sorted(E)
 
     # distances
     dist = deepcopy(dist1)
     for k in dist2.keys():
-        if k not in dist.keys():
+        if k not in dist:
+        # if k not in dist.keys():
             dist[k] = dist2[k]
         else:
             if dist[k] != dist2[k]:
@@ -794,7 +1283,8 @@ def merge_graph(V1, V2, E1, E2, dist1, dist2, edits1, edits2):
     # edit contents
     edits = deepcopy(edits1)
     for e in edits2.keys():
-        if e not in edits.keys():
+        if e not in edits:
+        # if e not in edits.keys():
             edits[e] = edits2[e]
         else:
             if edits[e] != edits2[e]:
