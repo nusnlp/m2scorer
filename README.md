@@ -56,9 +56,9 @@ The following dependencies have to be installed to use the M^2 scorer.
 ```
 Usage: m2scorer [OPTIONS] SYSTEM SOURCE_GOLD
 ```
-where
- SYSTEM          -   system output, one sentence per line
- SOURCE_GOLD     -   source sentences with gold token edits
+where   
+ SYSTEM          -   system output, one sentence per line   
+ SOURCE_GOLD     -   source sentences with gold token edits   
 ```
 OPTIONS
   -v    --verbose             -  print verbose output
@@ -69,8 +69,7 @@ OPTIONS
 
 ```
 #### 2.1 System output format
-SYSTEM = File that contains the output of the error correction
-system. The sentences should be in tokenized plain text, sentence-per-line
+The sentences should be in tokenized plain text, sentence-per-line
 format.
 
 Format:
@@ -79,12 +78,11 @@ Format:
 <tokenized system output for sentence 2>
  ...
 ```
-
 **Examples of tokenization:**  
- Original  : He said, "We shouldn't go to the place. It'll kill one of us."
- Tokenized : He said , " We should n't go to the place . It 'll kill one of us . "
+ Original  : He said, "We shouldn't go to the place. It'll kill one of us."   
+ Tokenized : He said , " We should n't go to the place . It 'll kill one of us . "   
 
-Note: Tokenization in the CoNLL-2014 shared task uses NLTK word tokenizer.
+**Note:** Tokenization in the CoNLL-2014 shared task uses NLTK word tokenizer.  
 
 **Sample output:**   
 ===> system <===
@@ -96,14 +94,15 @@ The Dog .
 SOURCE_GOLD = source sentences (i.e. input to the error correction
 system) and the gold annotation in TOKEN offsets (starting from zero). 
 
-Format:
+**Format:**
+```
 S <tokenized system output for sentence 1>
 A <token start offset> <token end offset>|||<error type>|||<correction1>||<correction2||..||correctionN|||<required>|||<comment>|||<annotator id>
 A <token start offset> <token end offset>|||<error type>|||<correction1>||<correction2||..||correctionN|||<required>|||<comment>|||<annotator id>
 
 S <tokenized system output for sentence 2>
 A <token start offset> <token end offset>|||<error type>|||<correction1>||<correction2||..||correctionN|||<required>|||<comment>|||<annotator id>
-
+```
 
 **Notes:**   
  * Each source sentence should appear on a single line starting with "S "
@@ -122,7 +121,9 @@ A <token start offset> <token end offset>|||<error type>|||<correction1>||<corre
 
 
 **Example:**   
-===> source_gold <===
+
+The gold annotation file can be found here: [example/source_gold](example/source_gold)
+```
 S The cat sat at mat .
 A 3 4|||Prep|||on|||REQUIRED|||-NONE-|||0
 A 4 4|||ArtOrDet|||the||a|||REQUIRED|||-NONE-|||0
@@ -136,22 +137,28 @@ A 2 3|||SVA|||are|||REQUIRED|||-NONE-|||0
 A 3 4|||ArtOrDet|||-NONE-|||REQUIRED|||-NONE-|||0
 A 5 6|||NN|||predators|||REQUIRED|||-NONE-|||0
 A 1 2|||NN|||otter|||REQUIRED|||-NONE-|||1
-
-
-===> system <===
+```
+Let the system output, [example/system](example/system) be
+```
 A cat sat on the mat .
 The dog .
 Giant otters are apex predator .
+```
+Run the 
+```
+./m2scorer example/system example/source_gold 
+```
+The evaluation output will be will be:
+```
+Precision   : 0.8000
+Recall      : 0.8000
+F_0.5       : 0.8000
+````
+**Explanation:**
+For the first sentence, the system makes two valid edits {(at-> on),
+(\epsilon -> the)} and one invalid edit (The -> A).
 
-./m2scorer  system source_gold 
-Precision   : 0.8
-Recall      : 0.8
-F_0.5       : 0.8
-
-For sentence #1, the system makes two valid edits {(at-> on),
-(\epsilon -> the)} and one unnecessary edit (The -> A).
-
-For sentence #2, despite missing one gold edit (dog -> dogs) according
+For the second sentence, despite missing one gold edit (dog -> dogs) according
 to annotation set 0, the system misses nothing according to set 1.
 
 For sentence #3, according to annotation set 0, the system makes two
