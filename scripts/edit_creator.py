@@ -82,6 +82,8 @@ for candidate, source in izip(system_read, source_read):
     V, E, dist, edits = merge_graph(V1, V2, E1, E2, dist1, dist2, edits1, edits2)
     V, E, dist, edits = transitive_arcs(V, E, dist, edits, max_unchanged_words, very_verbose)
 
+    # print the source sentence and target sentence
+    # S = source, T = target
     print "S {0}".format(source)
     print "T {0}".format(candidate)
 
@@ -95,6 +97,8 @@ for candidate, source in izip(system_read, source_read):
     for ed in list(reversed(editSeq)):
         # Only print those "changed" edits
         if ed[2] != ed[3]:
+            # Print the edits using format: A start end|||origin|||target|||anno_ID
+            # At the moment, the annotation ID is always 0
             print "A {0} {1}|||{2}|||{3}|||{4}".format(ed[0], ed[1], ed[2], ed[3], 0)
     print ""
 system_read.close()
