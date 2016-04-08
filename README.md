@@ -7,7 +7,7 @@
 
 This is the scorer for evaluation of grammatical error correction systems. 
 This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License (See [LICENSE](license.md).
+it under the terms of the GNU General Public License (See [LICENSE](license.md)).
 
 If you are using the NUS M^2 scorer in your work, please include a
 citation of the following paper:
