@@ -1,22 +1,13 @@
-Release 3.2
-Revision: 22 April 2014
+** This is a developmental repository for M2Scorer **
+** For an official version, visit http://www.comp.nus.edu.sg/~nlp/conll14st.html **
+** Or https://github.com/nusnlp/m2scorer/releases **
 
-This README file describes the NUS MaxMatch (M^2) scorer.
-Copyright (C) 2013 Daniel Dahlmeier, Hwee Tou Ng, Christian Hadiwinoto,
-and Raymond Hendy Susanto
 
+## M^2Scorer 
+
+This is the scorer for evaluation of grammatical error correction systems. 
 This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or (at
-your option) any later version.
-
-This program is distributed in the hope that it will be useful, but
-WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-General Public License for more details.
-
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+it under the terms of the GNU General Public License (See [LICENSE](license.md).
 
 If you are using the NUS M^2 scorer in your work, please include a
 citation of the following paper:
@@ -30,8 +21,7 @@ Any questions regarding the NUS M^2 scorer should be directed to
 Hwee Tou Ng (nght@comp.nus.edu.sg).
 
 
-Contents
-========
+### Contents
 0. Quickstart
 1. Pre-requisites
 2. Using the scorer
@@ -46,29 +36,30 @@ Contents
        dealing with sequences of insertion/deletion edits
 
 
-0. Quickstart
-=============
- ./m2scorer [-v] SYSTEM SOURCE_GOLD 
+### 0. Quickstart
 
+```
+./m2scorer [-v] SYSTEM SOURCE_GOLD 
+```
 SYSTEM = the system output in sentence-per-line plain text.
 SOURCE_GOLD = the source sentences with gold edits.
 
 
-1. Pre-requisites
-=================
+### 1. Pre-requisites
 The following dependencies have to be installed to use the M^2 scorer.
 
-+ Python (>= 2.6.4, < 3.0, older versions might work but are not tested)
-+ nltk (http://www.nltk.org, needed for sentence splitting) 
+* Python (>= 2.6.4, < 3.0, older versions might work but are not tested)
+* nltk (http://www.nltk.org, needed for sentence splitting) 
 
 
-2. Using the scorer
-===================
+### 2. Using the scorer
+```
 Usage: m2scorer [OPTIONS] SYSTEM SOURCE_GOLD
+```
 where
  SYSTEM          -   system output, one sentence per line
  SOURCE_GOLD     -   source sentences with gold token edits
-
+```
 OPTIONS
   -v    --verbose             -  print verbose output
   --very_verbose              -  print lots of verbose output
@@ -76,34 +67,32 @@ OPTIONS
   --ignore_whitespace_casing  -  Ignore edits that only affect whitespace and casing. Default no.
   --beta                      -  Set the ratio of recall importance against precision. Default = 0.5.
 
-
-2.1 System output format
-========================
+```
+#### 2.1 System output format
 SYSTEM = File that contains the output of the error correction
 system. The sentences should be in tokenized plain text, sentence-per-line
 format.
 
 Format:
+```
 <tokenized system output for sentence 1>
 <tokenized system output for sentence 2>
  ...
+```
 
-Examples of tokenization:
--------------------------
+**Examples of tokenization:**
  Original  : He said, "We shouldn't go to the place. It'll kill one of us."
  Tokenized : He said , " We should n't go to the place . It 'll kill one of us . "
 
 Note: Tokenization in the CoNLL-2014 shared task uses NLTK word tokenizer.
 
-Sample output:
---------------
+**Sample output:**
 ===> system <===
 A cat sat on the mat .
 The Dog .
 
 
-2.2 Scorer's gold standard format
-=================================
+#### 2.2 Scorer's gold standard format
 SOURCE_GOLD = source sentences (i.e. input to the error correction
 system) and the gold annotation in TOKEN offsets (starting from zero). 
 
@@ -116,25 +105,23 @@ S <tokenized system output for sentence 2>
 A <token start offset> <token end offset>|||<error type>|||<correction1>||<correction2||..||correctionN|||<required>|||<comment>|||<annotator id>
 
 
-Notes:
-------
- - Each source sentence should appear on a single line starting with "S "
- - Each source sentence is followed by zero or more annotations.
- - Each annotation is on a separate line starting with "A ".
- - Sentences are separated by one or more empty lines.
- - The source sentences need to be tokenized in the same way as the system output.
- - Start and end offset for annotations are in token offsets (starting from zero).
- - The gold edits can include one or more possible correction strings. Multiple corrections should be separate by '||'.
- - The error type, required field, and comment are not used for scoring at the moment. You can put dummy values there.
- - The annotator ID is used to identify a distinct annotation set by which system edits will be evaluated.
-   - Each distinct annotation set, identified by an annotator ID, is an alternative
-   - If one sentence has multiple annotator IDs, score will be computed for each annotator.
-   - If one of the multiple annotation alternatives is no edit at all, an edit with type 'noop' or with offsets '-1 -1' must be specified.
-   - The final score for the sentence will use the set of edits by an annotation set maximizing the score.
+** Notes: **
+ * Each source sentence should appear on a single line starting with "S "
+ * Each source sentence is followed by zero or more annotations.
+ * Each annotation is on a separate line starting with "A ".
+ * Sentences are separated by one or more empty lines.
+ * The source sentences need to be tokenized in the same way as the system output.
+ * Start and end offset for annotations are in token offsets (starting from zero).
+ * The gold edits can include one or more possible correction strings. Multiple corrections should be separate by '||'.
+ * The error type, required field, and comment are not used for scoring at the moment. You can put dummy values there.
+ * The annotator ID is used to identify a distinct annotation set by which system edits will be evaluated.
+   * Each distinct annotation set, identified by an annotator ID, is an alternative
+   * If one sentence has multiple annotator IDs, score will be computed for each annotator.
+   * If one of the multiple annotation alternatives is no edit at all, an edit with type 'noop' or with offsets '-1 -1' must be specified.
+   * The final score for the sentence will use the set of edits by an annotation set maximizing the score.
 
 
-Example:
---------
+** Example:**
 ===> source_gold <===
 S The cat sat at mat .
 A 3 4|||Prep|||on|||REQUIRED|||-NONE-|||0
@@ -180,8 +167,7 @@ recall. In the above example, the beta value for the F-measure is 0.5
 (the default value).
 
 
-3. Converting the CoNLL-2014 data format
-========================================
+### 3. Converting the CoNLL-2014 data format
 The data format used in the M^2 scorer differs from the format used in
 the CoNLL-2014 shared task (http://www.comp.nus.edu.sg/~nlp/conll14st.html)
 in two aspects:
@@ -193,10 +179,9 @@ the M^2 format, run the preprocessing script bundled with the CoNLL-2014
 training data.
 
 
-4. Revisions
-============
+### 4. Revisions
 
-4.1 Alternative edits
+#### 4.1 Alternative edits
 
 In this release, there is a major modification which enables scoring
 with multiple sets of gold edits. For every sentence, the system
@@ -207,7 +192,7 @@ the sentence is chosen.
 This modification was carried out by Christian Hadiwinoto, 2013.
 
 
-4.2 F-beta measure
+#### 4.2 F-beta measure
 
 While the previous release always uses the F1 measure, i.e. beta =
 1.0, this release supports any value for beta. The default value for
@@ -216,7 +201,7 @@ beta for this version is 0.5.
 This modification was carried out by Raymond Hendy Susanto, 2013.
 
 
-4.3 Handling of insertion edits
+#### 4.3 Handling of insertion edits
 
 Multiple insertion edits (starting and ending at the same offset) that
 match a gold edit were counted repeatedly, leading to erroneous and
@@ -228,7 +213,7 @@ This modification was jointly carried out by Raymond Hendy Susanto and
 Christian Hadiwinoto, 2014.
 
 
-4.4 Bug fix for scoring against multiple sets of gold edits, and
+#### 4.4 Bug fix for scoring against multiple sets of gold edits, and
 dealing with sequences of insertion/deletion edits
 
 Fixed a bug in the M2 scorer arising from scoring against gold edits
