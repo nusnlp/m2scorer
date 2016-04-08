@@ -12,15 +12,15 @@ from itertools import izip
 def print_usage():
     print >> sys.stderr, "Usage: m2scorer.py [OPTIONS] source target"
     print >> sys.stderr, "where"
-    print >> sys.stderr, "  target          -   system output, sentence per line"
-    print >> sys.stderr, "  source          -   source sentences with gold token edits"
+    print >> sys.stderr, "  source          -   the source input"
+    print >> sys.stderr, "  target          -   the target side of a parallel corpus or a system output"
 
     print >> sys.stderr, "OPTIONS"
     print >> sys.stderr, "  -v    --verbose                   	-  print verbose output"
     print >> sys.stderr, "        --very_verbose              	-  print lots of verbose output"
     print >> sys.stderr, "        --max_unchanged_words N     	-  Maximum unchanged words when extraction edit. Default 0."
-    print >> sys.stderr, "        --beta B                    	-  Beta value for F-measure. Default 0.5."
     print >> sys.stderr, "        --ignore_whitespace_casing  	-  Ignore edits that only affect whitespace and caseing. Default no."
+    print >> sys.stderr, "        --output  	                  -  The output file. Otherwise, it prints to standard output "
 
 
 max_unchanged_words=0
@@ -28,8 +28,8 @@ beta = 0.5
 ignore_whitespace_casing= True
 verbose = False
 very_verbose = False
-filter_etypes = ["all"]
-opts, args = getopt(sys.argv[1:], "v", ["max_unchanged_words=", "beta=", "verbose", "ignore_whitespace_casing", "very_verbose", "error_type="])
+output = None
+opts, args = getopt(sys.argv[1:], "v", ["max_unchanged_words=", "beta=", "verbose", "ignore_whitespace_casing", "very_verbose", "output="])
 #print opts
 for o, v in opts:
     if o in ('-v', '--verbose'):
@@ -42,8 +42,8 @@ for o, v in opts:
         beta = float(v)
     elif o == '--ignore_whitespace_casing':
         ignore_whitespace_casing = True
-    elif o == '--error_type':
-		filter_etypes = v.split(",")
+    elif o == '--output':
+        output = v
     else:
         print >> sys.stderr, "Unknown option :", o
         print_usage()
@@ -54,6 +54,10 @@ if len(args) != 2:
     print_usage()
     sys.exit(-1)
 
+write_output = sys.stdout
+if output:
+  write_output = open(output, 'w')
+
 source_file = args[0]
 target_file = args[1]
 
@@ -62,10 +66,11 @@ system_read = open(target_file, 'r')
 source_read = open(source_file, 'r')
 
 count = 0
+print >> sys.stderr, "Process line by line: ",
 for candidate, source in izip(system_read, source_read):
-    count += 1
     if not count % 1000:
         print >> sys.stderr, count,
+    count += 1
     candidate = candidate.strip()
     source = source.strip()
 
@@ -84,8 +89,9 @@ for candidate, source in izip(system_read, source_read):
 
     # print the source sentence and target sentence
     # S = source, T = target
-    print "S {0}".format(source)
-    print "T {0}".format(candidate)
+    print >> write_output, "S {0}".format(source)
+    if verbose:
+      print >> write_output, "T {0}".format(candidate)
 
     # Find the shortest path with an empty gold set
     gold = []
@@ -99,8 +105,11 @@ for candidate, source in izip(system_read, source_read):
         if ed[2] != ed[3]:
             # Print the edits using format: A start end|||origin|||target|||anno_ID
             # At the moment, the annotation ID is always 0
-            print "A {0} {1}|||{2}|||{3}|||{4}".format(ed[0], ed[1], ed[2], ed[3], 0)
-    print ""
+            # print "A {0} {1}|||{2}|||{3}|||{4}".format(ed[0], ed[1], ed[2], ed[3], 0)
+            print >> write_output, "A {0} {1}|||{2}|||{3}|||{4}|||{5}|||{6}".format(ed[0], ed[1], "UNK", ed[3], 'REQUIRED', '-NONE-', 0)
+    print >> write_output,""
 system_read.close()
 source_read.close()
-
+print >> sys.stderr, "Done!"
+if output:
+  write_output.close()
