@@ -18,8 +18,6 @@ Grammatical Error Correction. In Proceedings of the 2012 Conference of
 the North American Chapter of the Association for Computational
 Linguistics: Human Language Technologies (NAACL 2012).
 
-Any questions regarding the NUS M^2 scorer should be directed to
-Hwee Tou Ng (nght@comp.nus.edu.sg).
 
 
 ### Contents  
@@ -144,7 +142,7 @@ A cat sat on the mat .
 The dog .
 Giant otters are apex predator .
 ```
-Run the 
+Run the M^2Scorer as follows:
 ```
 ./m2scorer example/system example/source_gold 
 ```
