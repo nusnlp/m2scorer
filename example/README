@@ -1,0 +1,6 @@
+(execute these examples from the m2scorer top-level directory)
+
+
+./m2scorer example/system_output.txt example/source_gold
+
+

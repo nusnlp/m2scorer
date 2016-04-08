@@ -1,0 +1,14 @@
+S The cat sat at mat .
+A 3 4|||Prep|||on|||REQUIRED|||-NONE-|||0
+A 4 4|||ArtOrDet|||the||a|||REQUIRED|||-NONE-|||0
+
+S The dog .
+A 1 2|||NN|||dogs|||REQUIRED|||-NONE-|||0
+A -1 -1|||noop|||-NONE-|||-NONE-|||-NONE-|||1
+
+S Giant otters is an apex predator .
+A 2 3|||SVA|||are|||REQUIRED|||-NONE-|||0
+A 3 4|||ArtOrDet|||-NONE-|||REQUIRED|||-NONE-|||0
+A 5 6|||NN|||predators|||REQUIRED|||-NONE-|||0
+A 1 2|||NN|||otter|||REQUIRED|||-NONE-|||1
+
