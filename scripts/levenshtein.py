@@ -174,7 +174,6 @@ def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=
         for annotator, gold in golds_set.iteritems():
             localdist = set_weights(E, dist, edits, gold, verbose, very_verbose)
 
-            # editSeq = best_edit_seq_bf(V, E, localdist, edits, very_verbose)
             editSeq = single_source_shortest_path(V, G, localdist, edits, gold, max_unchanged_words, source_tok, very_verbose)
 
             if verbose:
@@ -581,7 +580,6 @@ def move_ins(editSeq, gold, max_unchanged_words, very_verbose = False):
         while(i < len(idx)):
             nextPtr = idx[i]
             k = thisPtr
-            # for k in range(thisPtr,nextPtr):
             while thisPtr <= k < nextPtr:
                 e = editSeq[k]
                 unchanged_words = editSeq[nextPtr+1]
@@ -787,8 +785,6 @@ def single_source_shortest_path(V, G, dist, edits, gold, max_unchanged_words, so
             edit = edits[(w,v)]
         except KeyError:
             break
-        # if w != None:
-            # edit = edits[(w,v)]
         if edit[0] != 'noop':
             editSeq.insert(0,edit)
         v = w
@@ -1151,7 +1147,6 @@ def edit_graph(levi_matrix, backpointers):
         Q_dict[v] = False
         queue = queue[1:]
     
-        # if v in V:
         if v in V_dict:
             continue
         V.append(v) 
@@ -1192,7 +1187,6 @@ def merge_graph(V1, V2, E1, E2, dist1, dist2, edits1, edits2):
     dist = deepcopy(dist1)
     for k in dist2.keys():
         if k not in dist:
-        # if k not in dist.keys():
             dist[k] = dist2[k]
         else:
             if dist[k] != dist2[k]:
@@ -1203,7 +1197,6 @@ def merge_graph(V1, V2, E1, E2, dist1, dist2, edits1, edits2):
     edits = deepcopy(edits1)
     for e in edits2.keys():
         if e not in edits:
-        # if e not in edits.keys():
             edits[e] = edits2[e]
         else:
             if edits[e] != edits2[e]:
