@@ -25,7 +25,7 @@ def print_usage():
 
 max_unchanged_words=0
 beta = 0.5
-ignore_whitespace_casing= True
+ignore_whitespace_casing= False
 verbose = False
 very_verbose = False
 output = None
