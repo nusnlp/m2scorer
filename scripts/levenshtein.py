@@ -126,7 +126,7 @@ def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=
             print "backpointers 2:", backpointers2
             print "edits (w/o transitive arcs):", edits
         V, E, dist, edits = transitive_arcs(V, E, dist, edits, max_unchanged_words, very_verbose)
-        
+
         # Find measures maximizing current cumulative F1; local: curent annotator only
         sqbeta = beta * beta
         chosen_ann = -1
@@ -153,7 +153,7 @@ def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=
             if ignore_whitespace_casing:
                 editSeq = filter(lambda x : not equals_ignore_whitespace_casing(x[2], x[3]), editSeq)
             correct = matchSeq(editSeq, gold, ignore_whitespace_casing, verbose)
-            
+
             # local cumulative counts, P, R and F1
             stat_correct_local = stat_correct + len(correct)
             stat_proposed_local = stat_proposed + len(editSeq)
@@ -215,7 +215,7 @@ def batch_multi_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=
         print "R =", r
         print "F_%.1f =" % beta, f1
     return (p, r, f1)
-    
+
 
 def batch_pre_rec_f1(candidates, sources, gold_edits, max_unchanged_words=2, beta=0.5, ignore_whitespace_casing= False, verbose=False, very_verbose=False):
     assert len(candidates) == len(sources) == len(gold_edits)
@@ -358,7 +358,7 @@ def matchSeq(editSeq, gold_edits, ignore_whitespace_casing= False, verbose=False
                         else:
                             print "*", e
     return m
-        
+
 def matchEdit(e, g, ignore_whitespace_casing= False):
     # start offset
     if e[0] != g[0]:
@@ -513,14 +513,14 @@ def next_identical_edge(cur, E, edits):
 def get_prev_edges(cur, E):
     prev = []
     for e in E:
-        if e[0] == cur[1]: 
+        if e[0] == cur[1]:
             prev.append(e)
     return prev
 
 def get_next_edges(cur, E):
     next = []
     for e in E:
-        if e[0] == cur[1]: 
+        if e[0] == cur[1]:
             next.append(e)
     return next
 
@@ -531,7 +531,7 @@ def get_next_edges(cur, E):
 def set_weights(E, dist, edits, gold_edits, verbose=False, very_verbose=False):
     EPSILON = 0.001
     if very_verbose:
-        print "set weights of edges()", 
+        print "set weights of edges()",
         print "gold edits :", gold_edits
 
     gold_set = deepcopy(gold_edits)
@@ -553,7 +553,7 @@ def set_weights(E, dist, edits, gold_edits, verbose=False, very_verbose=False):
         if (s, e) not in G:
             G[(s,e)] = []
         G[(s,e)].append(gold)
-    
+
     for k in sorted(M.keys()):
         M[k] = sorted(M[k])
 
@@ -571,9 +571,9 @@ def set_weights(E, dist, edits, gold_edits, verbose=False, very_verbose=False):
                 thisEdit = edits[edge]
                 # only check start offset, end offset, original string, corrections
                 if very_verbose:
-                    print "set weights of edge", edge 
+                    print "set weights of edge", edge
                     print "edit  =", thisEdit
-                
+
                 cur_gold = []
                 if cur == lptr:
                     cur_gold = range(g_lptr, g_rptr+1)
@@ -598,7 +598,7 @@ def set_weights(E, dist, edits, gold_edits, verbose=False, very_verbose=False):
                             #g_rptr -= 1 # why?
                             g_rptr = i - 1
                         break
-                        
+
                 if not hasGoldMatch and thisEdit[0] != 'noop':
                     retdist[edge] += EPSILON
                 if hasGoldMatch:
@@ -628,7 +628,7 @@ def set_weights(E, dist, edits, gold_edits, verbose=False, very_verbose=False):
                 hasGoldMatch = False
                 thisEdit = edits[edge]
                 if very_verbose:
-                    print "set weights of edge", edge 
+                    print "set weights of edge", edge
                     print "edit  =", thisEdit
                 for gold in G[k]:
                     if thisEdit[1] == gold[0] and \
@@ -676,11 +676,11 @@ def transitive_arcs(V, E, dist, edits, max_unchanged_words=2, very_verbose=False
                     eij = merge_edits(eik, ekj)
                     if eij[-1] <= max_unchanged_words:
                         if very_verbose:
-                            print " add new arcs v_i -> v_j:", eij 
+                            print " add new arcs v_i -> v_j:", eij
                         E.append((vi, vj))
                         dist[(vi, vj)] = dik + dkj
                         edits[(vi, vj)] = eij
-    # remove noop transitive arcs 
+    # remove noop transitive arcs
     if very_verbose:
         print "-- Remove transitive noop arcs --"
     for edge in E:
@@ -805,7 +805,7 @@ def merge_graph(V1, V2, E1, E2, dist1, dist2, edits1, edits2):
 def levenshtein_distance(first, second):
     lmatrix, backpointers = levenshtein_matrix(first, second)
     return lmatrix[-1][-1]
-    
+
 
 # levenshtein matrix
 def levenshtein_matrix(first, second, cost_ins=1, cost_del=1, cost_sub=2):
@@ -824,7 +824,8 @@ def levenshtein_matrix(first, second, cost_ins=1, cost_del=1, cost_sub=2):
         backpointers[(i, 0)] = [((i-1,0), edit)]
     for j in range(1, second_length):
         distance_matrix[0][j]=j
-        edit = ("ins", j-1, j-1, '', second[j-1], 0)
+        edit = ("ins", 0, 0, '', second[j-1], 0) # always insert from the beginning
+        #edit = ("ins", j-1, j-1, '', second[j-1], 0)
         backpointers[(0, j)] = [((0,j-1), edit)]
 
     # fill the matrix
