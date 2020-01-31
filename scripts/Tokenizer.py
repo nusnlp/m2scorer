@@ -22,6 +22,7 @@
 # usage : %prog < input > output
 
 
+from __future__ import print_function
 import re
 import sys
 
@@ -174,4 +175,4 @@ if __name__ == "__main__":
         line = line.decode("utf8")
         tokens = tokenizer.tokenize(line.strip())
         out = ' '.join(tokens)
-        print out.encode("utf8")
+        print(out.encode("utf8"))
