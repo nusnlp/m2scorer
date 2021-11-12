@@ -171,7 +171,7 @@ class PTBTokenizer(object):
 if __name__ == "__main__":
     tokenizer = PTBTokenizer()
     for line in sys.stdin:
-        line = line.decode("utf8")
-        tokens = tokenizer.tokenize(line.strip())
+        line = line.rstrip()
+        tokens = tokenizer.tokenize(line)
         out = ' '.join(tokens)
-        print out.encode("utf8")
+        print(out)
