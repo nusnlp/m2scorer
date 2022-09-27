@@ -46,7 +46,7 @@ SOURCE_GOLD = the source sentences with gold edits.
 ### Pre-requisites
 The following dependencies have to be installed to use the M^2 scorer.
 
-* Python (>= 2.6.4, < 3.0, older versions might work but are not tested)
+* Python (>= 3.5, older versions might work but are not tested)
 * nltk (http://www.nltk.org, needed for sentence splitting) 
 
 

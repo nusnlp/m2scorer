@@ -7,20 +7,18 @@ from util import paragraphs
 from util import smart_open
 from levenshtein import equals_ignore_whitespace_casing
 from levenshtein import levenshtein_matrix, edit_graph, merge_graph, transitive_arcs
-import levenshtein
-from itertools import izip
-def print_usage():
-    print >> sys.stderr, "Usage: m2scorer.py [OPTIONS] source target"
-    print >> sys.stderr, "where"
-    print >> sys.stderr, "  source          -   the source input"
-    print >> sys.stderr, "  target          -   the target side of a parallel corpus or a system output"
 
-    print >> sys.stderr, "OPTIONS"
-    print >> sys.stderr, "  -v    --verbose                   	-  print verbose output"
-    print >> sys.stderr, "        --very_verbose              	-  print lots of verbose output"
-    print >> sys.stderr, "        --max_unchanged_words N     	-  Maximum unchanged words when extraction edit. Default 0."
-    print >> sys.stderr, "        --ignore_whitespace_casing  	-  Ignore edits that only affect whitespace and caseing. Default no."
-    print >> sys.stderr, "        --output  	                  -  The output file. Otherwise, it prints to standard output "
+def print_usage():
+    print("""Usage: m2scorer.py [OPTIONS] source target
+where
+  source          -   the source input
+  target          -   the target side of a parallel corpus or a system output
+OPTIONS"
+  -v    --verbose                   	-  print verbose output
+        --very_verbose              	-  print lots of verbose output
+        --max_unchanged_words N     	-  Maximum unchanged words when extraction edit. Default 0.
+        --ignore_whitespace_casing  	-  Ignore edits that only affect whitespace and caseing. Default no.
+        --output  	                    -  The output file. Otherwise, it prints to standard output""", file=sys.stderr)
 
 
 max_unchanged_words=0
@@ -45,7 +43,7 @@ for o, v in opts:
     elif o == '--output':
         output = v
     else:
-        print >> sys.stderr, "Unknown option :", o
+        print("Unknown option :", o, file=sys.stderr)
         print_usage()
         sys.exit(-1)
 
@@ -62,14 +60,14 @@ source_file = args[0]
 target_file = args[1]
 
 # read the input files
-system_read = open(target_file, 'r')
-source_read = open(source_file, 'r')
+system_read = open(target_file)
+source_read = open(source_file)
 
 count = 0
-print >> sys.stderr, "Process line by line: ",
-for candidate, source in izip(system_read, source_read):
+print("Process line by line: ", file=sys.stderr)
+for candidate, source in zip(system_read, source_read):
     if not count % 1000:
-        print >> sys.stderr, count,
+        print(count, file=sys.stderr)
     count += 1
     candidate = candidate.strip()
     source = source.strip()
@@ -89,27 +87,27 @@ for candidate, source in izip(system_read, source_read):
 
     # print the source sentence and target sentence
     # S = source, T = target
-    print >> write_output, "S {0}".format(source)
+    print("S {0}".format(source), file=write_output)
     if verbose:
-      print >> write_output, "T {0}".format(candidate)
+      print("T {0}".format(candidate), file=write_output)
 
     # Find the shortest path with an empty gold set
     gold = []
     localdist = levenshtein.set_weights(E, dist, edits, gold, verbose, very_verbose)
     editSeq = levenshtein.best_edit_seq_bf(V, E, localdist, edits, very_verbose)
     if ignore_whitespace_casing:
-        editSeq = filter(lambda x : not equals_ignore_whitespace_casing(x[2], x[3]), editSeq)
+        editSeq = filter(lambda x: not equals_ignore_whitespace_casing(x[2], x[3]), editSeq)
 
-    for ed in list(reversed(editSeq)):
+    for ed in reversed(editSeq):
         # Only print those "changed" edits
         if ed[2] != ed[3]:
             # Print the edits using format: A start end|||origin|||target|||anno_ID
             # At the moment, the annotation ID is always 0
             # print "A {0} {1}|||{2}|||{3}|||{4}".format(ed[0], ed[1], ed[2], ed[3], 0)
-            print >> write_output, "A {0} {1}|||{2}|||{3}|||{4}|||{5}|||{6}".format(ed[0], ed[1], "UNK", ed[3], 'REQUIRED', '-NONE-', 0)
-    print >> write_output,""
+            print("A {0} {1}|||{2}|||{3}|||{4}|||{5}|||{6}".format(ed[0], ed[1], "UNK", ed[3], 'REQUIRED', '-NONE-', 0), file=write_output)
+    print("", file=write_output)
 system_read.close()
 source_read.close()
-print >> sys.stderr, "Done!"
+print("Done!", file=sys.stderr)
 if output:
   write_output.close()
